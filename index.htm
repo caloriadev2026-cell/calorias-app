@@ -381,6 +381,14 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
 
 <!-- CONFIG cargado desde /config.js -->
 <script>
+// Credenciales inline (fallback si config.js no carga)
+if(typeof SUPABASE_URL === 'undefined'){
+  var SUPABASE_URL  = 'https://htdqjrmzlvlchjxfttzf.supabase.co';
+  var SUPABASE_KEY  = 'sb_publishable_Ko0EPVLdgsA_4neIWAX0dQ_MaZe3X_N';
+  var FREE_LIMIT    = 10;
+  var DAILY_CAL_REF = 2000;
+  var ANTHROPIC_KEY = '';
+}
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 </script>
 
@@ -593,7 +601,10 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   <!-- BOTTOM CTA -->
   <div class="ob-bottom-cta" id="obBottomCta" style="display:none">
-    <button class="btn-primary" id="obBtnNext" onclick="obNextStep()" disabled>Continuar →</button>
+    <div style="display:flex;gap:0.75rem;">
+      <button id="obBtnBack" onclick="obGoTo(obCurrentStep-1)" style="display:none;flex:0 0 52px;padding:0.95rem;background:var(--surface);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-size:1.1rem;cursor:pointer;align-items:center;justify-content:center;">←</button>
+      <button class="btn-primary" id="obBtnNext" onclick="obNextStep()" disabled style="margin-top:0">Continuar →</button>
+    </div>
   </div>
 
 </div>
@@ -1536,7 +1547,9 @@ function obUpdateProgress(step){
 function obSelect(el,key,val){
   el.closest('.ob-options').querySelectorAll('.ob-opt').forEach(o=>o.classList.remove('on'));
   el.classList.add('on');
-  obData[key]=val;
+  // Save without 'ob' prefix for consistency
+  const cleanKey = key.replace('ob','').toLowerCase();
+  obData[cleanKey]=val;
   obValidate(obCurrentStep);
 }
 
@@ -1550,14 +1563,17 @@ function obSelectSex(el,val){
 
 function obValidate(step){
   let ok=false;
-  if(step===1)ok=!!obData.obGoal;
+  if(step===1)ok=!!obData.goal;
   else if(step===2)ok=!!obData.sex&&!!document.getElementById('obWeight').value&&!!document.getElementById('obHeight').value&&!!document.getElementById('obAge').value;
   else if(step===3||step===6)ok=true;
-  else if(step===4)ok=!!obData.obDiet;
-  else if(step===5)ok=!!obData.obMeals;
+  else if(step===4)ok=!!obData.diet;
+  else if(step===5)ok=!!obData.meals;
   else if(step===7)ok=false;
   const btn=document.getElementById('obBtnNext');
   if(btn)btn.disabled=!ok;
+  // Show/hide back button
+  const back=document.getElementById('obBtnBack');
+  if(back)back.style.display=step>1?'flex':'none';
 }
 
 function obCalcGoals(){
@@ -1566,7 +1582,7 @@ function obCalcGoals(){
   const a=parseFloat(document.getElementById('obAge').value)||25;
   const act=parseFloat(document.getElementById('obActivity').value)||1.55;
   const sex=obData.sex||'M';
-  const goal=obData.obGoal||'maintain';
+  const goal=obData.goal||'maintain';
   obData.weight=w;obData.height=h;obData.age=a;obData.activity=act;
   let bmr=sex==='M'?88.362+(13.397*w)+(4.799*h)-(5.677*a):447.593+(9.247*w)+(3.098*h)-(4.330*a);
   let tdee=Math.round(bmr*act);
@@ -1635,7 +1651,7 @@ async function obFinish(){
   try {
     if(currentUser){
       await sb.from('profiles').update({
-        goal:obData.obGoal,sex:obData.sex,
+        goal:obData.goal,sex:obData.sex,
         weight:obData.weight,height:obData.height,age:obData.age,
         goals:obData.goals,
         notifications:{...mealTimes,enabled:obData.notifEnabled},
@@ -1653,11 +1669,11 @@ function obShowFinal(){
   document.getElementById('obHeader').style.display='none';
   const name=(currentUser?.user_metadata?.name||currentUser?.email?.split('@')[0]||'').split(' ')[0];
   document.getElementById('obFinalName').textContent=name;
-  document.getElementById('obSGoal').textContent=OB_GOAL_LABELS[obData.obGoal]||'—';
+  document.getElementById('obSGoal').textContent=OB_GOAL_LABELS[obData.goal]||'—';
   document.getElementById('obSCal').textContent=(obData.goals.cal||2000).toLocaleString('es-CL')+' kcal';
   document.getElementById('obSProt').textContent=(obData.goals.prot||150)+'g';
   document.getElementById('obSWater').textContent=(obData.goals.water||2.5)+'L';
-  document.getElementById('obSMeals').textContent=(obData.obMeals||3)+' comidas';
+  document.getElementById('obSMeals').textContent=(obData.meals||3)+' comidas';
   document.getElementById('obSNotif').textContent=obData.notifEnabled?'✅ Activadas':'⏳ Pendiente';
 }
 
