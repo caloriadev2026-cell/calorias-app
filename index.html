@@ -1356,27 +1356,12 @@ async function doAnalyze() {
   stepInt=setInterval(()=>{stepI=(stepI+1)%steps.length;document.getElementById('analyzingStep').textContent=steps[stepI];},1800);
 
   try {
-    const prompt=`Analiza esta imagen de comida. Responde SOLO JSON válido sin texto extra ni backticks:
-{"dishName":"nombre del plato en español","calories":número entero,"calorieRange":"rango ej: 450-550 kcal","protein":gramos entero,"carbs":gramos entero,"fat":gramos entero,"fiber":gramos entero,"sodium":mg entero,"sugar":gramos entero,"components":[{"name":"ingrediente","calories":número,"portion":"cantidad"}],"advice":"consejo nutricional breve en español","confidence":número 0-100}
-Si no hay comida: {"error":"No se detectó comida"}`;
-
-    const res=await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          contents:[{parts:[
-            {inline_data:{mime_type:imageMediaType,data:imageBase64}},
-            {text:prompt}
-          ]}],
-          generationConfig:{temperature:0.1,maxOutputTokens:1000}
-        })
-      }
-    );
-    const data=await res.json();
-    const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
-    const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    const res=await fetch('/.netlify/functions/analyze',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({imageBase64,mimeType:imageMediaType})
+    });
+    const parsed=await res.json();
     if(parsed.error){showToast('⚠️ '+parsed.error);resetPhoto();return;}
     photoResult=parsed;
     renderResult(parsed);
