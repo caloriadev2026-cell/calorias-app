@@ -88,7 +88,8 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
 /* ══════════════════════
    AUTH VIEW
 ══════════════════════ */
-#authView{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;background:radial-gradient(ellipse 300px 200px at 50% 0%,rgba(200,255,0,0.06),transparent);}
+#authView{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;background:radial-gradient(ellipse 300px 200px at 50% 0%,rgba(200,255,0,0.06),transparent);}
+#authView.active{display:flex!important;}
 .auth-box{width:100%;max-width:400px;}
 .auth-logo{text-align:center;font-size:3rem;font-weight:800;letter-spacing:-0.05em;margin-bottom:0.2rem;}
 .auth-logo em{color:var(--accent);font-style:italic;font-family:'Crimson Pro',serif;}
@@ -289,8 +290,8 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
 .live-macros{font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--muted);}
 
 /* ══ ONBOARDING ══ */
+#onboardView{min-height:100vh;}
 @keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
-#onboardView{padding-bottom:100px;}
 .ob-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;position:sticky;top:0;background:rgba(8,8,8,0.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);z-index:50;}
 .ob-logo{font-size:1.2rem;font-weight:800;letter-spacing:-0.04em;}
 .ob-logo em{color:var(--accent);font-style:italic;font-family:'Crimson Pro',serif;}
@@ -1033,10 +1034,19 @@ async function doRegister() {
   if(error){setMsg(error.message);return;}
   setMsg('✅ ¡Cuenta creada! Configurando tu perfil…','ok');
   setTimeout(async()=>{
+    // Try to get session — if email confirmation disabled, user is logged in
     const {data:{session}}=await sb.auth.getSession();
-    if(session?.user){currentUser=session.user;showView('onboardView');obGoTo(0);}
-    else{switchAuthTab('login');document.getElementById('loginEmail').value=email;}
-  },1200);
+    if(session?.user){
+      currentUser=session.user;
+      showView('onboardView');
+      obGoTo(0);
+    } else {
+      // Email confirmation required — go to login
+      setMsg('✅ Revisa tu correo para confirmar la cuenta.','ok');
+      switchAuthTab('login');
+      document.getElementById('loginEmail').value=email;
+    }
+  },1000);
 }
 
 async function doLogout(){await sb.auth.signOut();currentUser=null;showView('authView');}
@@ -1050,6 +1060,12 @@ function setLoading(btnId,txtId,on,txt=''){
 async function enterApp(user) {
   currentUser=user;
   await loadProfile();
+  // Check if onboarding was done
+  if(!userProfile.goal && !userProfile.onboarding_done){
+    showView('onboardView');
+    obGoTo(0);
+    return;
+  }
   await loadDashboard();
   showView('dashView');
   setActiveNav(0);
