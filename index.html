@@ -23,6 +23,12 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:80px;}
+/* Fix iOS safe area */
+@supports(padding-bottom: env(safe-area-inset-bottom)){
+  body{padding-bottom:calc(80px + env(safe-area-inset-bottom));}
+  .bottom-nav{padding-bottom:calc(0.7rem + env(safe-area-inset-bottom));}
+  .ob-bottom-cta{padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));}
+}
 .view{display:none;} .view.active{display:block;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -686,7 +692,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       <div class="ob-notif-ex"><div class="ob-ne-icon">⚠️</div><div class="ob-ne-text">Llevas 24h sin registrar comidas</div><div class="ob-ne-time">Auto</div></div>
     </div>
     <button class="btn-primary" id="obNotifBtn" onclick="obRequestNotif()" style="margin-bottom:0.75rem">🔔 &nbsp;Activar notificaciones</button>
-    <button class="btn-secondary" onclick="obFinish()">Después →</button>
+    <button class="btn-secondary" onclick="obFinish()">Continuar sin notificaciones →</button>
   </div>
 
   <!-- FINAL -->
@@ -1741,19 +1747,32 @@ async function obRequestNotif(){
   const btn=document.getElementById('obNotifBtn');
   btn.disabled=true;
   btn.innerHTML='<div class="spinner"></div> &nbsp;Solicitando…';
-  if('Notification' in window){
-    const perm=await Notification.requestPermission();
-    if(perm==='granted'){
-      obData.notifEnabled=true;
-      btn.innerHTML='✅ &nbsp;¡Activadas!';
-      btn.style.background='var(--green)';
-      setTimeout(()=>obFinish(),1000);
-    } else {
-      btn.innerHTML='❌ &nbsp;Permiso denegado';
-      btn.style.background='var(--red)';
+  if('Notification' in window && Notification.permission!=='denied'){
+    try{
+      const perm=await Notification.requestPermission();
+      if(perm==='granted'){
+        obData.notifEnabled=true;
+        btn.innerHTML='✅ &nbsp;¡Activadas!';
+        btn.style.background='var(--green)';
+        setTimeout(()=>obFinish(),1000);
+      } else {
+        btn.innerHTML='🔕 &nbsp;Sin notificaciones';
+        btn.style.background='var(--surface)';
+        btn.style.color='var(--muted)';
+        btn.disabled=false;
+      }
+    } catch(e){
+      btn.innerHTML='⚠️ &nbsp;No disponible';
+      btn.style.background='var(--surface)';
+      btn.style.color='var(--muted)';
       btn.disabled=false;
     }
-  } else {btn.innerHTML='⚠️ No disponible';btn.disabled=false;}
+  } else {
+    btn.innerHTML='⚠️ &nbsp;No disponible en Safari/iOS';
+    btn.style.background='var(--surface)';
+    btn.style.color='var(--muted)';
+    btn.disabled=false;
+  }
 }
 
 async function obFinish(){
